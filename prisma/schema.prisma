@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Status {
+  SUBMITTED
+  JA_REJECTED
+  JA_APPROVED_PENDING_AR
+  AR_REJECTED
+  AR_APPROVED_PENDING_CW
+  CW_REJECTED
+  COMPLETED
+}
+
+enum RoomType {
+  CATEGORY_A_NON_AC
+  CATEGORY_B_AC
+}
+
+enum PaidBy {
+  GUEST
+  APPLICANT
+}
+
+model Booking {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Section 1: Applicant Details
+  applicantName    String
+  designation      String
+  department       String
+  empCode          String
+  mobile           String
+  email            String
+
+  // Section 2: Guest Details
+  totalMale        Int      @default(0)
+  totalFemale      Int      @default(0)
+  guestNames       String   
+  relation         String
+  guestAddress     String
+  guestContact     String
+  guestEmail       String?
+
+  // Section 3: Visit Details
+  purpose          String
+
+  // Section 4: Room Category
+  roomType         RoomType
+
+  // Section 5: Stay Duration
+  arrivalDate      DateTime
+  departureDate    DateTime
+
+  // Section 6: Payment Responsibility
+  paidBy           PaidBy
+
+  // Section 7: Undertaking
+  undertakingAccepted Boolean @default(true)
+  applicantSignature  String
+
+  // Section 8: Remarks
+  applicantRemarks String?
+
+  // Workflow Fields
+  status           Status   @default(SUBMITTED)
+  
+  // JA Fields
+  hostelAllotted   String?
+  jaRemarks        String?
+  jaApprovedAt     DateTime?
+
+  // AR Fields
+  arRemarks        String?
+  arSignature      String?
+  arApprovedAt     DateTime?
+
+  // CW Fields
+  cwRemarks        String?
+  cwSignature      String?
+  cwApprovedAt     DateTime?
+}
