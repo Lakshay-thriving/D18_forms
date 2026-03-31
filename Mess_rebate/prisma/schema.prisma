@@ -1,0 +1,170 @@
+// IIT Ropar Mess Rebate System - Prisma Schema
+// Database: PostgreSQL (Local)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  STUDENT
+  MESS_MANAGER
+  CARETAKER
+  JUNIOR_SUPERINTENDENT
+  ADMIN
+}
+
+enum Course {
+  UG
+  PG
+  PHD
+}
+
+enum RebateType {
+  PERSONAL_LEAVE
+  OFFICIAL_DUTY_LEAVE
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  MESS_MANAGER_APPROVED
+  MESS_MANAGER_REJECTED
+  CARETAKER_APPROVED
+  CARETAKER_REJECTED
+  CARETAKER_SENT_BACK
+  JS_APPROVED
+  JS_REJECTED
+  COMPLETED
+}
+
+// User model - handles all roles
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          UserRole  @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Student specific fields
+  entryNumber   String?   @unique
+  course        Course?
+  hostelName    String?
+  roomNumber    String?
+  messName      String?
+
+  // Relations
+  rebateRequests    RebateRequest[]
+  messManagerApprovals   Approval[] @relation("MessManagerApprovals")
+  caretakerApprovals     Approval[] @relation("CaretakerApprovals")
+  jsApprovals            Approval[] @relation("JSApprovals")
+
+  @@map("users")
+}
+
+// Rebate Request model
+model RebateRequest {
+  id                String        @id @default(cuid())
+  studentId         String
+  student           User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Rebate details
+  rebateType        RebateType
+  fromDate          DateTime
+  toDate            DateTime
+  totalDays         Int
+  totalMeals        Int           // Auto-calculated: totalDays * 3
+  
+  // Status tracking
+  status            RequestStatus @default(DRAFT)
+  
+  // Documents
+  documentUrl       String?
+  
+  // Declaration
+  declarationAccepted Boolean     @default(false)
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  submittedAt       DateTime?
+  
+  // Relations
+  approvals         Approval[]
+  
+  @@map("rebate_requests")
+}
+
+// Approval model - tracks each step in the workflow
+model Approval {
+  id              String        @id @default(cuid())
+  requestId       String
+  request         RebateRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  // Approver details
+  approverRole    UserRole
+  approverId      String?
+  
+  // Mess Manager relation
+  messManager     User?         @relation("MessManagerApprovals", fields: [messManagerId], references: [id])
+  messManagerId   String?
+  
+  // Caretaker relation
+  caretaker       User?         @relation("CaretakerApprovals", fields: [caretakerId], references: [id])
+  caretakerId     String?
+  
+  // Junior Superintendent relation
+  juniorSuperintendent User?    @relation("JSApprovals", fields: [juniorSuperintendentId], references: [id])
+  juniorSuperintendentId String?
+  
+  // Approval details
+  approved        Boolean?
+  remarks         String?
+  
+  // For Mess Manager - meal verification
+  confirmedMeals  Int?
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@map("approvals")
+}
+
+// Semester tracking for 20-day limit
+model SemesterRebateTracker {
+  id              String    @id @default(cuid())
+  studentId       String
+  semester        String    // e.g., "2024-SPRING", "2024-FALL"
+  totalDaysUsed   Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([studentId, semester])
+  @@map("semester_rebate_tracker")
+}
+
+// Hostel configuration
+model Hostel {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  
+  @@map("hostels")
+}
+
+// Mess configuration
+model Mess {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  
+  @@map("messes")
+}
