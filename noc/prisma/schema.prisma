@@ -1,0 +1,257 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==================== Authentication & Users ====================
+
+enum UserRole {
+  APPLICANT
+  REGISTRAR
+  JOINT_REGISTRAR
+  ESTABLISHMENT_1
+  ESTABLISHMENT_2
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      UserRole
+  isApproved Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  otpVerifications OTPVerification[]
+  nocRequests      NOCRequest[]       @relation("ApplicantRequests")
+  nocApprovals     NOCApproval[]
+  signatures       DigitalSignature[]
+  auditLogs        AuditLog[]
+  replies          NOCReply[]
+  printHistory     PrintHistory[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model OTPVerification {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// ==================== NOC Request & Workflow ====================
+
+enum NOCStatus {
+  DRAFT
+  SUBMITTED
+  // Forward workflow stages
+  PENDING_REGISTRAR
+  PENDING_JOINT_REGISTRAR
+  PENDING_ESTABLISHMENT
+  // Reply workflow stages (document going back with signatures)
+  REPLY_JOINT_REGISTRAR      // After establishment signs, goes to JR
+  REPLY_REGISTRAR            // For Passport NOC: JR forwards to Registrar
+  REPLY_COMPLETE             // All signatures collected, ready for applicant
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum CertificateType {
+  NO_OBJECTION
+  RESIDENCE_PROOF
+  OTHER
+}
+
+enum ApplicantType {
+  FACULTY
+  STAFF
+}
+
+enum PassportType {
+  PASSPORT
+  NON_PASSPORT
+}
+
+model NOCRequest {
+  id        String   @id @default(cuid())
+  requestId String   @unique
+  status    NOCStatus @default(DRAFT)
+
+  // Applicant Information
+  applicant   User   @relation("ApplicantRequests", fields: [applicantId], references: [id], onDelete: Cascade)
+  applicantId String
+
+  // Form Data
+  purpose              String
+  certificateType      CertificateType
+  applicantType        ApplicantType
+  passportType         PassportType
+  presentAddress       String
+  permanentAddress     String?
+  designation          String
+  department           String
+  employeeCode         String?
+
+  // Approval Workflow
+  approvals    NOCApproval[]
+  currentStage String? // Current approval stage in workflow
+
+  // Documents & Signatures
+  signatures   DigitalSignature[]
+  attachments  Attachment[]
+  replies      NOCReply[]
+  printHistory PrintHistory[]
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  submittedAt DateTime?
+
+  @@index([applicantId])
+  @@index([status])
+  @@index([requestId])
+  @@index([createdAt])
+}
+
+model NOCApproval {
+  id        String   @id @default(cuid())
+  requestId String
+  request   NOCRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  approverRole UserRole
+  approver     User?    @relation(fields: [approverId], references: [id], onDelete: SetNull)
+  approverId   String?
+
+  status      String // "approved", "rejected", "pending"
+  comments    String?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([requestId])
+  @@index([approverRole])
+  @@index([approverId])
+}
+
+// ==================== Digital Signatures ====================
+
+model DigitalSignature {
+  id        String   @id @default(cuid())
+  request   NOCRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId String
+
+  signer   User   @relation(fields: [signerId], references: [id])
+  signerId String
+
+  signatureData    String   // Base64 encoded signature image
+  signatureHash    String   // SHA-256 hash of signature data for verification
+  documentHash     String?  // Hash of document state at time of signing
+  signedAt         DateTime @default(now())
+  stage            String   // Which stage of approval
+  signerRole       String   // Role of signer at time of signing
+  signerEmail      String   // Email of signer for display
+  isVerified       Boolean  @default(true) // Verification status
+
+  @@index([requestId])
+  @@index([signerId])
+}
+
+// ==================== NOC Reply ====================
+
+enum ReplyType {
+  PASSPORT_PATH
+  NON_PASSPORT_PATH
+}
+
+model NOCReply {
+  id        String   @id @default(cuid())
+  request   NOCRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId String
+
+  applicant   User   @relation(fields: [applicantId], references: [id])
+  applicantId String
+
+  replyType    ReplyType
+  letterPath   String?  // Path to generated letter
+  generatedAt  DateTime @default(now())
+
+  @@index([requestId])
+  @@index([applicantId])
+}
+
+// ==================== Print History ====================
+
+model PrintHistory {
+  id        String   @id @default(cuid())
+  request   NOCRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId String
+
+  printedBy   User   @relation(fields: [printedById], references: [id])
+  printedById String
+
+  version       Int      // Version number of the print
+  statusAtPrint String   // Status when printed
+  stageAtPrint  String?  // Current stage when printed
+  documentData  String   @db.Text // JSON snapshot of document state
+  printedAt     DateTime @default(now())
+
+  @@index([requestId])
+  @@index([printedById])
+  @@index([version])
+}
+
+// ==================== Attachments ====================
+
+model Attachment {
+  id        String   @id @default(cuid())
+  request   NOCRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId String
+
+  fileName  String
+  fileType  String
+  fileSize  Int
+  filePath  String
+  uploadedAt DateTime @default(now())
+
+  @@index([requestId])
+}
+
+// ==================== Audit Logs ====================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+
+  action    String   // e.g., "LOGIN", "APPROVE", "REJECT", "SUBMIT"
+  entity    String   // e.g., "NOCRequest", "User"
+  entityId  String
+  details   String?  // JSON stringified details
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityId])
+  @@index([createdAt])
+}
