@@ -1,0 +1,4 @@
+1. Each stakeholder must be able to see the uploaded documents. 
+2. Each stakeholder must be able to see the applications of the applicant whom he has approved.
+3. Each stakeholder must also see whether the previous stakeholder has approved or not. 
+4. The applicant should get the email notification after final approval by the chief warden. And also if rejected by any stakeholder with the remarks.

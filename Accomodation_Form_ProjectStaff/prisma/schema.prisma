@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  PENDING_FACULTY_APPROVAL
+  PENDING_HOD_RECOMMENDATION
+  PENDING_HOSTEL_REVIEW
+  SENT_BACK_TO_APPLICANT
+  PENDING_ALLOCATION
+  PENDING_AR_APPROVAL
+  PENDING_CHIEF_WARDEN_APPROVAL
+  COMPLETED
+  REJECTED
+}
+
+enum HostelRentCategory {
+  CATEGORY_A
+  CATEGORY_B
+}
+
+enum Hostel {
+  BRAHMAPUTRA_BOYS
+  CHENAB
+  BEAS
+  SATLUJ
+  BRAHMAPUTRA_GIRLS
+  RAAVI
+}
+
+model Application {
+  id                    String            @id @default(cuid())
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  // Applicant Details
+  applicantName         String
+  gender                Gender
+  department            String
+  fullAddress           String
+  contactNumber         String
+  emailId               String
+  
+  // Faculty Supervisor Details
+  facultySupervisorName String
+  facultyEmail          String
+  facultyContactNumber  String
+  
+  // Stay Details
+  periodOfStayFrom      DateTime
+  periodOfStayTo        DateTime
+  dateOfArrival         DateTime
+  dateOfDeparture       DateTime
+  
+  // Documents
+  offerLetterUrl        String
+  idProofUrl            String
+  
+  // Category
+  hostelRentCategory    HostelRentCategory
+  
+  // Additional Information
+  remarks               String?
+  applicantSignature    String
+  
+  // Status
+  status                ApplicationStatus @default(SUBMITTED)
+  
+  // Hostel Allocation (filled by Junior Superintendent)
+  allocatedHostel       Hostel?
+  allocatedRoomNumber   String?
+  
+  // Approval workflow relations
+  approvals             Approval[]
+  
+  @@index([status])
+  @@index([emailId])
+}
+
+enum ApprovalRole {
+  FACULTY_SUPERVISOR
+  HOD
+  JUNIOR_SUPERINTENDENT
+  ASSISTANT_REGISTRAR
+  CHIEF_WARDEN
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+  RECOMMENDED
+  SENT_BACK
+  PROCEED_TO_ALLOCATION
+}
+
+model Approval {
+  id             String         @id @default(cuid())
+  createdAt      DateTime       @default(now())
+  
+  applicationId  String
+  application    Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  role           ApprovalRole
+  action         ApprovalAction
+  remarks        String?
+  signature      String
+  
+  @@index([applicationId])
+  @@index([role])
+}
+
+// User model for stakeholders
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String
+  role          ApprovalRole
+  department    String?
+  createdAt     DateTime     @default(now())
+  
+  sessions      Session[]
+  
+  @@index([role])
+  @@index([email])
+}
+
+// OTP model for email verification
+model OTP {
+  id            String       @id @default(cuid())
+  email         String
+  code          String
+  expiresAt     DateTime
+  createdAt     DateTime     @default(now())
+  used          Boolean      @default(false)
+  
+  @@index([email])
+  @@index([code])
+}
+
+// Session model for authenticated users
+model Session {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token         String       @unique
+  expiresAt     DateTime
+  createdAt     DateTime     @default(now())
+  
+  @@index([token])
+  @@index([userId])
+}
