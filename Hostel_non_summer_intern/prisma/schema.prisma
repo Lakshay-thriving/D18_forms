@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  APPLICANT
+  FACULTY_MENTOR
+  HOD
+  JUNIOR_SUPERINTENDENT
+  ASSISTANT_REGISTRAR
+  CHIEF_WARDEN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  FACULTY_APPROVED
+  FACULTY_REJECTED
+  HOD_APPROVED
+  HOD_REJECTED
+  JS_REVIEWED
+  JS_SENT_BACK
+  HOSTEL_ALLOCATED
+  AR_APPROVED
+  AR_REJECTED
+  CHIEF_WARDEN_APPROVED
+  CHIEF_WARDEN_REJECTED
+  COMPLETED
+}
+
+enum HostelCategory {
+  CATEGORY_A
+  CATEGORY_B
+}
+
+enum Department {
+  COMPUTER_SCIENCE
+  ELECTRICAL_ENGINEERING
+  MECHANICAL_ENGINEERING
+  CIVIL_ENGINEERING
+  CHEMICAL_ENGINEERING
+  BIOMEDICAL_ENGINEERING
+  MATHEMATICS
+  PHYSICS
+  CHEMISTRY
+  HUMANITIES
+}
+
+model User {
+  id                String      @id @default(cuid())
+  email             String      @unique
+  name              String
+  role              UserRole
+  department        Department?
+  contactNumber     String?
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  applicationsAsApplicant Application[] @relation("ApplicantApplications")
+  approvalActions         ApprovalAction[]
+  otpSessions             OtpSession[]
+
+  @@index([email])
+  @@index([role])
+  @@index([department])
+}
+
+model OtpSession {
+  id        String   @id @default(cuid())
+  userId    String
+  otp       String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Application {
+  id                    String            @id @default(cuid())
+  
+  // Applicant Details
+  applicantId           String
+  applicantName         String
+  gender                Gender
+  affiliation           String
+  fullAddress           String
+  contactNumber         String
+  applicantEmail        String
+  
+  // Faculty Mentor Details
+  facultyMentorName     String
+  facultyMentorEmail    String
+  facultyMentorContact  String
+  facultyMentorId       String?
+  
+  // Stay Details
+  internshipStartDate   DateTime
+  internshipEndDate     DateTime
+  arrivalDate           DateTime
+  departureDate         DateTime
+  
+  // Financial Details
+  financialSupport      Float             @default(0)
+  hostelCategory        HostelCategory
+  
+  // Documents
+  documents             Document[]
+  
+  // Hostel Allocation (filled by JS)
+  allocatedHostel       String?
+  allocatedRoom         String?
+  
+  // Status
+  status                ApplicationStatus @default(DRAFT)
+  remarks               String?
+  
+  // Declaration
+  declarationAccepted   Boolean           @default(false)
+  
+  // Timestamps
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  submittedAt           DateTime?
+
+  // Relations
+  applicant             User              @relation("ApplicantApplications", fields: [applicantId], references: [id])
+  approvalActions       ApprovalAction[]
+
+  @@index([applicantId])
+  @@index([status])
+  @@index([facultyMentorEmail])
+}
+
+model Document {
+  id            String      @id @default(cuid())
+  applicationId String
+  name          String
+  type          String      // institute_id, parent_letter, confirmation_letter
+  url           String
+  uploadedAt    DateTime    @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+model ApprovalAction {
+  id            String            @id @default(cuid())
+  applicationId String
+  userId        String
+  role          UserRole
+  action        String            // APPROVED, REJECTED, SENT_BACK, ALLOCATED
+  remarks       String?
+  signature     String?
+  
+  // For hostel allocation by JS
+  allocatedHostel String?
+  allocatedRoom   String?
+  
+  createdAt     DateTime          @default(now())
+
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id])
+
+  @@index([applicationId])
+  @@index([userId])
+}

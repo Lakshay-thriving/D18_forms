@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  role      Role      @default(PA)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  otpCodes  OtpCode[]
+  sessions  Session[]
+  slips     Slip[]    @relation("CreatedBy")
+}
+
+enum Role {
+  ADMIN
+  PA
+  VENDOR
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  code      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Slip {
+  id           String     @id @default(cuid())
+  slipNumber   String     @unique
+  guestName    String
+  roomNumber   String?
+  teaCount     Int        @default(0)
+  coffeeCount  Int        @default(0)
+  instructions String?
+  authorizedBy AuthRole?
+  signature    String?
+  status       SlipStatus @default(PENDING)
+  createdById  String
+  createdBy    User       @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([createdById])
+  @@index([status])
+}
+
+enum AuthRole {
+  PS
+  PA
+  REGISTRAR
+  DEAN
+  HOD
+}
+
+enum SlipStatus {
+  PENDING
+  PREPARING
+  DELIVERED
+}
