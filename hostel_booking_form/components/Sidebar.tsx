@@ -35,10 +35,10 @@ export default function Sidebar() {
   menuItems.push({ href: '/notifications', label: 'Notifications', icon: Bell });
 
   return (
-    <aside className="w-64 min-h-screen flex-shrink-0 bg-[#0B3D91] text-white fixed left-0 top-0 z-50 flex flex-col shadow-xl">
+    <aside className="w-72 min-h-screen flex-shrink-0 bg-[#0B3D91] text-white fixed left-0 top-0 z-50 flex flex-col shadow-xl">
       {/* Top Section */}
       <div className="px-5 py-6 border-b border-white/10 flex items-center gap-3">
-        <div className="w-12 h-12 bg-white rounded-md flex items-center justify-center shrink-0 shadow-inner overflow-hidden relative">
+        <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center shrink-0 shadow-inner overflow-hidden relative">
           <Image src="/iitropar logo.png" alt="IIT Ropar Logo" fill className="object-contain p-1" />
         </div>
         <div className="flex flex-col">

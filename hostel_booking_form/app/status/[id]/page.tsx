@@ -2,7 +2,7 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Building, MapPin, Phone, Briefcase, FileText, CheckCircle, XCircle } from "lucide-react";
+import { Users, Building, MapPin, Phone, Briefcase, FileText, CheckCircle, XCircle, Printer, Download, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
 export default function ApplicationDetails() {
@@ -36,13 +36,27 @@ export default function ApplicationDetails() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12 print:max-w-none print:m-0 print:p-8">
       
       {/* Header */}
-      <h1 className="text-2xl font-bold text-[#222]">Booking Tracker</h1>
+      <div className="flex justify-between items-end mb-2">
+        <div>
+          <h1 className="text-3xl font-bold text-[#222]">Request Details</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">Application ID: GR-2026-{booking.id ? booking.id.split('-')[0].substring(0, 4).toUpperCase() : "XX"}</p>
+        </div>
+        
+        <div className="flex gap-3 no-print">
+          <button onClick={() => window.print()} className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-gray-50 transition flex items-center gap-2">
+            <Printer className="w-4 h-4" /> Print
+          </button>
+          <button onClick={() => window.print()} className="bg-[#0B3D91] border border-[#0B3D91] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-[#082a63] transition flex items-center gap-2">
+            <Download className="w-4 h-4" /> Download PDF
+          </button>
+        </div>
+      </div>
 
       {/* Stepper Logic Pipeline */}
-      <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-8 mt-4">
+      <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-8 mt-4 print:border-none print:shadow-none print:p-0">
         
         <div className="relative flex items-center justify-between max-w-2xl mx-auto px-4 z-0 mt-4 mb-4">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[3px] bg-gray-100 -z-10"></div>
@@ -84,24 +98,14 @@ export default function ApplicationDetails() {
             );
           })}
         </div>
-
-        {isRejected && (
-          <div className="mt-8 bg-[#ffebee] border border-red-200 rounded-lg p-5 text-red-900 shadow-sm">
-            <h4 className="font-bold flex items-center gap-2 mb-2"><XCircle className="w-5 h-5 text-[#C62828]" /> Application Rejected</h4>
-            <div className="text-sm bg-white p-3 rounded border border-red-100 shadow-sm font-medium">
-              <span className="text-xs uppercase font-bold text-gray-500 block mb-1">Reason:</span>
-              {booking.jaRemarks || booking.arRemarks || booking.cwRemarks || "No remarks were provided by the administrator."}
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Main Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-4">
         
         {/* Guest Details */}
-        <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-gray-100 bg-[#F5F7FA]">
+        <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col print:border-gray-300">
+          <div className="px-5 py-4 border-b border-gray-100 bg-[#F5F7FA] print:bg-gray-100">
             <h3 className="font-bold text-[#0B3D91] flex items-center gap-2"><Users className="w-4 h-4" /> Guest Information</h3>
           </div>
           <div className="p-5 space-y-4">
@@ -132,8 +136,8 @@ export default function ApplicationDetails() {
 
         {/* Stay & Applicant */}
         <div className="space-y-6">
-          <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-gray-100 bg-[#F5F7FA]">
+          <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col print:border-gray-300">
+            <div className="px-5 py-4 border-b border-gray-100 bg-[#F5F7FA] print:bg-gray-100">
               <h3 className="font-bold text-[#0B3D91] flex items-center gap-2"><Building className="w-4 h-4" /> Accommodation</h3>
             </div>
             <div className="p-5 space-y-3">
@@ -154,7 +158,7 @@ export default function ApplicationDetails() {
             </div>
           </section>
 
-          <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+          <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 print:border-gray-300">
             <h3 className="font-bold text-[#222] text-sm flex items-center gap-2 mb-3"><Briefcase className="w-4 h-4 text-gray-500" /> Authorized Applicant</h3>
             <div className="space-y-2">
               <p className="font-semibold text-gray-800 text-sm">{booking.applicantName}</p>
@@ -164,11 +168,81 @@ export default function ApplicationDetails() {
           </section>
         </div>
         
-        <div className="md:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm p-6 mt-2">
+        {/* Purpose */}
+        <div className="md:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm p-6 mt-2 print:border-gray-300">
           <h3 className="font-bold text-[#0B3D91] flex items-center gap-2 mb-3"><FileText className="w-4 h-4 text-[#0B3D91]" /> Detailed Purpose</h3>
           <p className="font-medium text-gray-700 text-sm leading-relaxed p-4 bg-gray-50 rounded-lg border border-gray-100">
             {booking.purpose}
           </p>
+        </div>
+
+        {/* Advanced Remarks / Comments System */}
+        <div className="md:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm p-6 mt-2 print:border-gray-300">
+          <h3 className="font-bold text-[#0B3D91] flex items-center gap-2 mb-4"><MessageSquare className="w-4 h-4 text-[#0B3D91]" /> Comments & Remarks</h3>
+          <div className="space-y-3">
+            
+            {booking.jaRemarks ? (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-gray-900 border-l-2 border-[#0B3D91] pl-2">JA Reviewer</span>
+                  <span className="text-[0.65rem] text-gray-500 font-medium uppercase">{format(new Date(booking.createdAt), "MMM d, HH:mm")}</span>
+                </div>
+                <p className="text-sm text-gray-700">{booking.jaRemarks}</p>
+              </div>
+            ) : currentStepIndex >= 1 ? (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-gray-900 border-l-2 border-[#0B3D91] pl-2">JA Reviewer</span>
+                  <span className="text-[0.65rem] text-green-600 font-bold uppercase tracking-widest">System Approved</span>
+                </div>
+                <p className="text-sm text-gray-500 italic">No manual remarks added. Verified routing to AR.</p>
+              </div>
+            ) : null}
+
+            {booking.arRemarks ? (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-left">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-gray-900 border-l-2 border-green-500 pl-2">Assistant Registrar</span>
+                  <span className="text-[0.65rem] text-gray-500 font-medium uppercase">{format(new Date(booking.createdAt), "MMM d, HH:mm")}</span>
+                </div>
+                <p className="text-sm text-gray-700">{booking.arRemarks}</p>
+              </div>
+            ) : currentStepIndex >= 2 ? (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-gray-900 border-l-2 border-green-500 pl-2">Assistant Registrar</span>
+                  <span className="text-[0.65rem] text-green-600 font-bold uppercase tracking-widest">System Approved</span>
+                </div>
+                <p className="text-sm text-gray-500 italic">Authorized cleanly via electronic workflow.</p>
+              </div>
+            ) : null}
+
+            {booking.cwRemarks ? (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-gray-900 border-l-2 border-red-500 pl-2">Chief Warden</span>
+                  <span className="text-[0.65rem] text-gray-500 font-medium uppercase">{format(new Date(booking.createdAt), "MMM d, HH:mm")}</span>
+                </div>
+                <p className="text-sm text-gray-700">{booking.cwRemarks}</p>
+              </div>
+            ) : currentStepIndex >= 3 && booking.status !== "CW_REJECTED" ? (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-gray-900 border-l-2 border-[#2E7D32] pl-2">Chief Warden</span>
+                  <span className="text-[0.65rem] text-green-600 font-bold uppercase tracking-widest">Final Approval Verified</span>
+                </div>
+                <p className="text-sm text-gray-500 italic">Booking successfully processed.</p>
+              </div>
+            ) : null}
+
+            {/* Empty Context */}
+            {currentStepIndex === 0 && !booking.jaRemarks && (
+              <div className="text-center p-6 bg-white border border-dashed border-gray-200 rounded-lg">
+                <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">Application is pending initial review</span>
+              </div>
+            )}
+
+          </div>
         </div>
 
       </div>

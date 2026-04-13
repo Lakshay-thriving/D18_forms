@@ -33,9 +33,36 @@ export default function NewBookingForm() {
   });
 
   useEffect(() => {
-    if (session?.user?.email) {
-      setFormData(prev => ({ ...prev, email: session?.user?.email as string }));
+    async function fetchHistoricalData() {
+      if (session?.user?.email) {
+        try {
+          const res = await fetch(`/api/bookings?email=${session.user.email}`);
+          const bookings = await res.json();
+          if (bookings && bookings.length > 0) {
+            const last = bookings[0];
+            setFormData(prev => ({
+              ...prev,
+              applicantName: last.applicantName || session.user?.name || prev.applicantName,
+              email: session.user?.email || prev.email,
+              mobile: last.mobile || "",
+              empCode: last.empCode || "",
+              department: last.department || "",
+              designation: last.designation || "",
+            }));
+          } else {
+            // First time ever booking fallback
+            setFormData(prev => ({
+              ...prev,
+              applicantName: session.user?.name || prev.applicantName,
+              email: session.user?.email || prev.email,
+            }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
     }
+    fetchHistoricalData();
   }, [session]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -280,7 +307,7 @@ export default function NewBookingForm() {
         </Section>
 
         {/* Sticky Fixed Bottom Action Bar */}
-        <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-gray-200 p-4 z-40 bg-opacity-95 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <div className="fixed bottom-0 left-0 md:left-72 right-0 bg-white border-t border-gray-200 p-4 z-40 bg-opacity-95 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.05)] text-center sm:text-right print:hidden">
           <div className="max-w-4xl mx-auto flex items-center justify-end gap-4 px-6 md:px-0">
             <button type="button" onClick={handleReset} className="px-6 py-2.5 bg-white border border-gray-300 text-gray-600 text-sm font-bold rounded-lg hover:bg-gray-50 transition-colors">
               Reset Form

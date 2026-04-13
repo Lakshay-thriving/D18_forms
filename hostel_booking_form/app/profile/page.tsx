@@ -10,21 +10,56 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState({
-    fullName: "Lakshay User",
-    empCode: "EMP-2026-X",
-    mobile: "9876543210",
-    email: "lakshay@iitrpr.ac.in",
-    department: "Computer Science",
-    designation: "Assistant Professor",
+    fullName: "",
+    empCode: "",
+    mobile: "",
+    email: "",
+    department: "",
+    designation: "",
   });
   
   // Temporary state for edits before save
   const [editForm, setEditForm] = useState({ ...profile });
 
+  // Sync edit form when profile eventually loads
+  useEffect(() => {
+    setEditForm({ ...profile });
+  }, [profile]);
+
+  // Fetch real details from backend history via NextAuth
+  useEffect(() => {
+    async function loadIdentity() {
+      try {
+        const emailRes = await fetch('/api/auth/session');
+        const session = await emailRes.json();
+        const email = session?.user?.email;
+        if (!email) return;
+
+        const res = await fetch(`/api/bookings?email=${email}`);
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+          const latest = data[0];
+          setProfile({
+            fullName: latest.applicantName || session.user.name || "",
+            empCode: latest.empCode || "",
+            mobile: latest.mobile || "",
+            email: email,
+            department: latest.department || "",
+            designation: latest.designation || "",
+          });
+        } else {
+           setProfile(p => ({ ...p, email, fullName: session?.user?.name || "" }));
+        }
+      } catch (err) { }
+    }
+    loadIdentity();
+  }, []);
+
   // Mobile Validation helper
-  const isMobileValid = editForm.mobile.match(/^[0-9]{10}$/);
+  const isMobileValid = editForm.mobile?.match(/^[0-9]{10}$/);
   // Email Validation helper
-  const isEmailValid = editForm.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+  const isEmailValid = editForm.email?.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);
   
   const canSave = isMobileValid && isEmailValid && editForm.fullName && editForm.empCode && editForm.department;
 
