@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "../components/Providers";
-import Navigation from "../components/Navigation"; // I will create this
+import Sidebar from "../components/Sidebar";
+import Header from "../components/Header";
 
 export const metadata: Metadata = {
   title: "IIT Ropar Guest Room Booking",
@@ -17,8 +18,15 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>
-          <Navigation />
-          {children}
+          <div className="flex min-h-screen bg-[#F5F7FA]">
+            <Sidebar />
+            <div className="flex-1 ml-64 min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-1 p-8 overflow-y-auto w-full max-w-[1400px] mx-auto">
+                {children}
+              </main>
+            </div>
+          </div>
         </Providers>
       </body>
     </html>

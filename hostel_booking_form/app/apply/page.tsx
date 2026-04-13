@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-export default function BookingForm() {
+export default function NewBookingForm() {
   const router = useRouter();
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,6 @@ export default function BookingForm() {
     relation: "",
     guestAddress: "",
     guestContact: "",
-    guestEmail: "",
     purpose: "",
     roomType: "CATEGORY_A_NON_AC",
     arrivalDate: "",
@@ -41,8 +40,13 @@ export default function BookingForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    const val = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
+    // @ts-ignore
+    const val = type === "checkbox" ? e.target.checked : value;
     setFormData((prev) => ({ ...prev, [name]: val }));
+  };
+
+  const handleReset = () => {
+    router.refresh();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +65,7 @@ export default function BookingForm() {
       if (!res.ok) throw new Error(data.error || "Failed to submit booking");
 
       router.push(`/status/${data.id}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -70,155 +75,222 @@ export default function BookingForm() {
 
   const totalGuests = Number(formData.totalMale) + Number(formData.totalFemale);
 
+  const calculateNights = () => {
+    if (!formData.arrivalDate || !formData.departureDate) return 0;
+    const a = new Date(formData.arrivalDate).getTime();
+    const d = new Date(formData.departureDate).getTime();
+    const diff = (d - a) / (1000 * 60 * 60 * 24);
+    return diff > 0 ? Math.ceil(diff) : 0;
+  };
+
+  // Reusable card container
+  const Section = ({ title, num, children }: { title: string, num: string, children: React.ReactNode }) => (
+    <section className="bg-white rounded-xl shadow-sm p-6 mb-4 border border-gray-100">
+      <h3 className="text-base font-semibold text-[#0B3D91] border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+        <span className="w-6 h-6 rounded bg-[#F5F7FA] text-[#0B3D91] font-bold text-xs flex items-center justify-center">{num}</span>
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+
   return (
-    <div className="container" style={{ paddingBottom: '4rem' }}>
-      <header style={{ textAlign: 'center', marginBottom: '3rem', paddingTop: '1rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 800 }}>Indian Institute of Technology Ropar</h1>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>Request for Reservation of Hostel Guest Room</h2>
-      </header>
+    <div className="max-w-4xl mx-auto pb-24">
+      
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[#222]">New Guest Room Booking</h1>
+        <p className="text-sm text-gray-500 mt-1">Please fill in all details for your requisition.</p>
+      </div>
 
       {error && (
-        <div style={{ border: '2px solid black', padding: '1rem', marginBottom: '1.5rem', fontWeight: 600 }}>
-          ⚠ ERROR: {error}
+        <div className="bg-[#ffebee] border border-[#ffcdd2] text-[#C62828] px-4 py-3 rounded-lg mb-6 text-sm font-medium">
+          {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <section className="glass-panel">
-          <h3 style={{ borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}>1. Applicant Details</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-            <div className="form-group">
-              <label className="form-label">Applicant Name*</label>
-              <input required type="text" name="applicantName" className="form-input" value={formData.applicantName} onChange={handleChange} />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        
+        {/* 1. Applicant Details */}
+        <Section title="Applicant Details" num="1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Applicant Name <span className="text-[#C62828]">*</span></label>
+              <input required type="text" name="applicantName" value={formData.applicantName} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" placeholder="Full name" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Designation*</label>
-              <input required type="text" name="designation" className="form-input" value={formData.designation} onChange={handleChange} />
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Designation <span className="text-[#C62828]">*</span></label>
+              <input required type="text" name="designation" value={formData.designation} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Department / Section*</label>
-              <input required type="text" name="department" className="form-input" value={formData.department} onChange={handleChange} />
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Department / Section <span className="text-[#C62828]">*</span></label>
+              <input required type="text" name="department" value={formData.department} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Employee Code / Entry Number*</label>
-              <input required type="text" name="empCode" className="form-input" value={formData.empCode} onChange={handleChange} />
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Employee Code / Entry No <span className="text-[#C62828]">*</span></label>
+              <input required type="text" name="empCode" value={formData.empCode} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Mobile Number*</label>
-              <input required type="tel" name="mobile" className="form-input" value={formData.mobile} onChange={handleChange} />
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Contact Number <span className="text-[#C62828]">*</span></label>
+              <input required type="tel" name="mobile" value={formData.mobile} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Email (@iitrpr.ac.in)*</label>
-              <input required type="email" name="email" className="form-input" disabled value={formData.email} onChange={handleChange} />
-            </div>
-          </div>
-        </section>
-
-        <section className="glass-panel">
-          <h3 style={{ borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}>2. Guest Details</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', marginTop: '1.5rem', background: 'var(--bg-alt)', padding: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Male Guests</label>
-              <input type="number" min="0" name="totalMale" className="form-input" value={formData.totalMale} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Female Guests</label>
-              <input type="number" min="0" name="totalFemale" className="form-input" value={formData.totalFemale} onChange={handleChange} />
-            </div>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-              <label className="form-label mb-0">Total</label>
-              <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{totalGuests}</span>
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Email <span className="text-[#C62828]">*</span></label>
+              <input required disabled type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed text-sm" />
             </div>
           </div>
-          {totalGuests > 2 && <span className="error-text" style={{ marginTop: '0.5rem', display: 'block' }}>Max 2 persons per room permitted.</span>}
+        </Section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-            <div className="form-group">
-              <label className="form-label">Guest Name(s)*</label>
-              <textarea required name="guestNames" className="form-textarea" value={formData.guestNames} onChange={handleChange} placeholder="Enter names if multiple" />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-              <div className="form-group">
-                <label className="form-label">Relation with Applicant*</label>
-                <input required type="text" name="relation" className="form-input" value={formData.relation} onChange={handleChange} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Guest Contact Number*</label>
-                <input required type="tel" name="guestContact" className="form-input" value={formData.guestContact} onChange={handleChange} />
+        {/* 2. Guest Details */}
+        <Section title="Guest Details" num="2">
+          <div className="flex flex-col md:flex-row gap-6 mb-6 p-4 rounded-lg bg-[#F5F7FA] border border-gray-100 relative">
+            <div className="flex-1 flex flex-col items-center">
+              <label className="text-sm font-bold text-[#222] mb-2">Male Guests</label>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setFormData(p => ({...p, totalMale: Math.max(0, p.totalMale - 1)}))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">-</button>
+                <div className="w-6 text-center font-bold text-lg">{formData.totalMale}</div>
+                <button type="button" onClick={() => setFormData(p => ({...p, totalMale: p.totalMale + 1}))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">+</button>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Guest Address*</label>
-              <textarea required name="guestAddress" className="form-textarea" style={{ minHeight: '80px' }} value={formData.guestAddress} onChange={handleChange} />
+            <div className="w-px bg-gray-200 hidden md:block"></div>
+            <div className="flex-1 flex flex-col items-center">
+              <label className="text-sm font-bold text-[#222] mb-2">Female Guests</label>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setFormData(p => ({...p, totalFemale: Math.max(0, p.totalFemale - 1)}))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">-</button>
+                <div className="w-6 text-center font-bold text-lg">{formData.totalFemale}</div>
+                <button type="button" onClick={() => setFormData(p => ({...p, totalFemale: p.totalFemale + 1}))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">+</button>
+              </div>
+            </div>
+            
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 text-center group cursor-help">
+              <div className="text-[0.65rem] font-bold text-gray-400 uppercase">Total</div>
+              <div className={`text-2xl font-black ${totalGuests > 2 ? 'text-[#C62828]' : 'text-[#0B3D91]'}`}>{totalGuests}</div>
+              {totalGuests > 2 && (
+                <div className="absolute bottom-full right-0 mb-2 w-32 bg-gray-900 text-white text-xs p-2 rounded shadow-lg text-center hidden group-hover:block">
+                  Note: Max 2 guests per room
+                </div>
+              )}
             </div>
           </div>
-        </section>
 
-        <section className="glass-panel">
-          <h3 style={{ borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}>3. Visit & Room Details</h3>
-          <div className="form-group" style={{ marginTop: '1.5rem' }}>
-            <label className="form-label">Purpose of Visit*</label>
-            <textarea required name="purpose" className="form-textarea" style={{ minHeight: '80px' }} value={formData.purpose} onChange={handleChange} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-[#222] mb-1">Guest Name(s) <span className="text-[#C62828]">*</span></label>
+              <textarea required name="guestNames" rows={2} value={formData.guestNames} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" placeholder="Enter names separated by commas" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Relation <span className="text-[#C62828]">*</span></label>
+              <input required type="text" name="relation" value={formData.relation} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#222] mb-1">Contact Info <span className="text-[#C62828]">*</span></label>
+              <input required type="text" name="guestContact" value={formData.guestContact} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-[#222] mb-1">Guest Address <span className="text-[#C62828]">*</span></label>
+              <textarea required name="guestAddress" rows={2} value={formData.guestAddress} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
+            </div>
           </div>
-          <div className="form-group" style={{ marginTop: '1.5rem' }}>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', border: '1px solid black', marginBottom: '0.5rem', cursor: 'pointer' }}>
-              <input type="radio" name="roomType" value="CATEGORY_A_NON_AC" checked={formData.roomType === "CATEGORY_A_NON_AC"} onChange={handleChange} style={{ transform: 'scale(1.2)' }} />
-              <span><strong>Category A (Non-AC)</strong> - ₹400/day/person</span>
+        </Section>
+
+        {/* 3. Visit Details */}
+        <Section title="Visit Details" num="3">
+          <label className="block text-sm font-semibold text-[#222] mb-1">Purpose of Visit <span className="text-[#C62828]">*</span></label>
+          <textarea required name="purpose" rows={3} value={formData.purpose} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
+        </Section>
+
+        {/* 4. Room Selection */}
+        <Section title="Room Selection" num="4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm focus:outline-none ${formData.roomType === "CATEGORY_A_NON_AC" ? "border-[#0B3D91] ring-1 ring-[#0B3D91] bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
+              <input type="radio" name="roomType" value="CATEGORY_A_NON_AC" checked={formData.roomType === "CATEGORY_A_NON_AC"} onChange={handleChange} className="sr-only" />
+              <span className="flex flex-col flex-1">
+                <span className="block text-sm font-bold text-[#222]">Non-AC Room</span>
+                <span className="text-xs font-semibold text-[#F4A300] mt-1">₹400 / day / person</span>
+              </span>
+              <span className={`h-4 w-4 rounded-full border flex items-center justify-center mt-1 ${formData.roomType === "CATEGORY_A_NON_AC" ? "bg-[#0B3D91] border-transparent" : "bg-white border-gray-300"}`}>
+                <span className="rounded-full bg-white w-1.5 h-1.5" />
+              </span>
             </label>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', border: '1px solid black', cursor: 'pointer' }}>
-              <input type="radio" name="roomType" value="CATEGORY_B_AC" checked={formData.roomType === "CATEGORY_B_AC"} onChange={handleChange} style={{ transform: 'scale(1.2)' }} />
-              <span><strong>Category B (AC)</strong> - ₹600/day/person</span>
-            </label>
-          </div>
-        </section>
-
-        <section className="glass-panel">
-          <h3 style={{ borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}>4. Stay Duration</h3>
-          <div style={{ padding: '1rem', background: '#f1f1f1', borderLeft: '4px solid black', marginBottom: '1.5rem', fontWeight: 500 }}>
-            NOTICE: Kindly apply at least 4 days in advance. Checkout time is 12:00 PM.
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-            <div className="form-group">
-              <label className="form-label">Date and Time of Arrival*</label>
-              <input required type="datetime-local" name="arrivalDate" className="form-input" value={formData.arrivalDate} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Date and Time of Departure*</label>
-              <input required type="datetime-local" name="departureDate" className="form-input" value={formData.departureDate} onChange={handleChange} />
-            </div>
-          </div>
-        </section>
-
-        <section className="glass-panel">
-          <h3 style={{ borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}>5. Payment & Undertaking</h3>
-          <div className="form-group" style={{ marginTop: '1.5rem' }}>
-            <label className="form-label">Payment Responsibility*</label>
-            <div style={{ display: 'flex', gap: '2rem', marginTop: '0.5rem' }}>
-              <label style={{ cursor: 'pointer', fontWeight: 600 }}><input type="radio" name="paidBy" value="GUEST" checked={formData.paidBy === "GUEST"} onChange={handleChange} /> GUEST</label>
-              <label style={{ cursor: 'pointer', fontWeight: 600 }}><input type="radio" name="paidBy" value="APPLICANT" checked={formData.paidBy === "APPLICANT"} onChange={handleChange} /> APPLICANT</label>
-            </div>
-          </div>
-
-          <div className="form-group" style={{ marginTop: '2rem' }}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', cursor: 'pointer', padding: '1.5rem', background: '#f9f9f9', border: '1px solid var(--border-color)' }}>
-              <input required type="checkbox" name="undertakingAccepted" checked={formData.undertakingAccepted} onChange={handleChange} style={{ transform: 'scale(1.5)', marginTop: '0.25rem' }} />
-              <span style={{ fontWeight: 500 }}>
-                I agree to verify that the above information is correct. I assure that the guest(s) will abide by the hostel rules. I agree to vacate the room on time as requested.
+            <label className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm focus:outline-none ${formData.roomType === "CATEGORY_B_AC" ? "border-[#0B3D91] ring-1 ring-[#0B3D91] bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
+              <input type="radio" name="roomType" value="CATEGORY_B_AC" checked={formData.roomType === "CATEGORY_B_AC"} onChange={handleChange} className="sr-only" />
+              <span className="flex flex-col flex-1">
+                <span className="block text-sm font-bold text-[#222]">AC Room</span>
+                <span className="text-xs font-semibold text-[#F4A300] mt-1">₹600 / day / person</span>
+              </span>
+              <span className={`h-4 w-4 rounded-full border flex items-center justify-center mt-1 ${formData.roomType === "CATEGORY_B_AC" ? "bg-[#0B3D91] border-transparent" : "bg-white border-gray-300"}`}>
+                <span className="rounded-full bg-white w-1.5 h-1.5" />
               </span>
             </label>
           </div>
+        </Section>
 
-          <div className="form-group" style={{ maxWidth: '400px', marginTop: '1.5rem' }}>
-            <label className="form-label">Applicant Digital Signature*</label>
-            <input required type="text" name="applicantSignature" className="form-input" placeholder="Type your full name to e-sign" value={formData.applicantSignature} onChange={handleChange} />
+        {/* 5. Stay Duration */}
+        <Section title="Stay Duration" num="5">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex-1 w-full">
+              <label className="block text-sm font-semibold text-[#222] mb-1">Arrival <span className="text-[#C62828]">*</span></label>
+              <input required type="datetime-local" name="arrivalDate" value={formData.arrivalDate} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
+            </div>
+            
+            <div className="hidden sm:flex flex-col items-center justify-center pt-5 px-2">
+              <div className="text-[#0B3D91] font-black text-lg">{calculateNights()}</div>
+              <div className="text-[0.65rem] font-bold text-gray-400 uppercase">Nights</div>
+            </div>
+
+            <div className="flex-1 w-full">
+              <label className="block text-sm font-semibold text-[#222] mb-1">Departure <span className="text-[#C62828]">*</span></label>
+              <input required type="datetime-local" name="departureDate" value={formData.departureDate} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" />
+            </div>
           </div>
-        </section>
+        </Section>
 
-        <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', maxWidth: '400px', fontSize: '1.2rem', padding: '1rem', borderRadius: 0 }} disabled={loading}>
-            {loading ? "SUBMITTING..." : "SUBMIT APPLICATION"}
-          </button>
+        {/* 6. Payment Responsibility */}
+        <Section title="Payment Responsibility" num="6">
+          <div className="flex gap-8">
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#222]">
+              <input type="radio" name="paidBy" value="GUEST" checked={formData.paidBy === "GUEST"} onChange={handleChange} className="w-4 h-4 text-[#0B3D91] border-gray-300 focus:ring-[#0B3D91]" /> 
+              Guest
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#222]">
+              <input type="radio" name="paidBy" value="APPLICANT" checked={formData.paidBy === "APPLICANT"} onChange={handleChange} className="w-4 h-4 text-[#0B3D91] border-gray-300 focus:ring-[#0B3D91]" /> 
+              Applicant
+            </label>
+          </div>
+        </Section>
+
+        {/* 7. Undertaking */}
+        <Section title="Undertaking" num="7">
+          <label className="flex items-start gap-3 cursor-pointer p-4 bg-[#F5F7FA] rounded-lg border border-gray-200 mb-4">
+            <input required type="checkbox" name="undertakingAccepted" checked={formData.undertakingAccepted} onChange={handleChange} className="w-4 h-4 mt-0.5 text-[#0B3D91] border-gray-300 rounded focus:ring-[#0B3D91]" />
+            <div>
+              <p className="text-sm font-bold text-[#222]">I abide by the Institute Rules</p>
+              <p className="text-xs text-gray-500 mt-1">I declare the information provided is valid, and the guest(s) will vacate on time without creating disruption.</p>
+            </div>
+          </label>
+          
+          <div className="max-w-xs">
+            <label className="block text-sm font-semibold text-[#222] mb-1">Digital Signature <span className="text-[#C62828]">*</span></label>
+            <input required type="text" name="applicantSignature" value={formData.applicantSignature} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" placeholder="Type applicant name" />
+          </div>
+        </Section>
+
+        {/* 8. Remarks */}
+        <Section title="General Remarks (Optional)" num="8">
+          <textarea name="applicantRemarks" rows={2} value={formData.applicantRemarks} onChange={handleChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B3D91] text-sm" placeholder="Any special arrangements..." />
+        </Section>
+
+        {/* Sticky Fixed Bottom Action Bar */}
+        <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-gray-200 p-4 z-40 bg-opacity-95 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+          <div className="max-w-4xl mx-auto flex items-center justify-end gap-4 px-6 md:px-0">
+            <button type="button" onClick={handleReset} className="px-6 py-2.5 bg-white border border-gray-300 text-gray-600 text-sm font-bold rounded-lg hover:bg-gray-50 transition-colors">
+              Reset Form
+            </button>
+            <button type="submit" disabled={loading} className="px-8 py-2.5 bg-[#0B3D91] hover:bg-[#082a63] text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center">
+              {loading ? "Submitting..." : "Submit Request"}
+            </button>
+          </div>
         </div>
+
       </form>
     </div>
   );
