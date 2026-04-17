@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -10,12 +10,17 @@ import { cn } from "@/lib/utils";
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const [mounted, setMounted] = useState(false);
 
-  // Determine what role the user is
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determine what role the user is — only after mount to avoid hydration mismatch
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (session?.user as any)?.role;
-  const isApplicant = role === "APPLICANT" || !role; // fallback
-  const isAdmin = ["JA", "AR", "CW"].includes(role);
+  const role = mounted ? (session?.user as any)?.role : undefined;
+  const isApplicant = role === "APPLICANT" || !role;
+  const isAdmin = mounted && ["JA", "AR", "CW"].includes(role);
 
   const menuItems = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },

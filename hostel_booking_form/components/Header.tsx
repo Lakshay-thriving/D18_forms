@@ -149,7 +149,7 @@ export default function Header() {
                     <User className="w-4 h-4" /> View Profile
                   </Link>
                   <button 
-                    onClick={() => signOut()} 
+                    onClick={() => signOut({ callbackUrl: '/login' })} 
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-[#C62828] hover:bg-red-50 transition-colors text-left"
                   >
                     <LogOut className="w-4 h-4" /> Logout
