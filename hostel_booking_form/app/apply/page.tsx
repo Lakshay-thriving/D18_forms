@@ -32,9 +32,11 @@ export default function NewBookingForm() {
     applicantRemarks: ""
   });
 
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
   useEffect(() => {
     async function fetchHistoricalData() {
-      if (session?.user?.email) {
+      if (session?.user?.email && !isDataLoaded) {
         try {
           const res = await fetch(`/api/bookings?email=${session.user.email}`);
           const bookings = await res.json();
@@ -57,13 +59,14 @@ export default function NewBookingForm() {
               email: session.user?.email || prev.email,
             }));
           }
+          setIsDataLoaded(true);
         } catch (e) {
           console.error(e);
         }
       }
     }
     fetchHistoricalData();
-  }, [session]);
+  }, [session, isDataLoaded]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
