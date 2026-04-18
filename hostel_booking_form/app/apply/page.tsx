@@ -3,6 +3,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
+// Reusable card container
+const Section = ({ title, num, children }: { title: string, num: string, children: React.ReactNode }) => (
+  <section className="bg-white rounded-xl shadow-sm p-6 mb-4 border border-gray-100">
+    <h3 className="text-base font-semibold text-[#0B3D91] border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+      <span className="w-6 h-6 rounded bg-[#F5F7FA] text-[#0B3D91] font-bold text-xs flex items-center justify-center">{num}</span>
+      {title}
+    </h3>
+    {children}
+  </section>
+);
+
 export default function NewBookingForm() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -113,16 +124,6 @@ export default function NewBookingForm() {
     return diff > 0 ? Math.ceil(diff) : 0;
   };
 
-  // Reusable card container
-  const Section = ({ title, num, children }: { title: string, num: string, children: React.ReactNode }) => (
-    <section className="bg-white rounded-xl shadow-sm p-6 mb-4 border border-gray-100">
-      <h3 className="text-base font-semibold text-[#0B3D91] border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
-        <span className="w-6 h-6 rounded bg-[#F5F7FA] text-[#0B3D91] font-bold text-xs flex items-center justify-center">{num}</span>
-        {title}
-      </h3>
-      {children}
-    </section>
-  );
 
   return (
     <div className="max-w-4xl mx-auto pb-24">
