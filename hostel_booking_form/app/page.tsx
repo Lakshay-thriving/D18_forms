@@ -1,14 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { Search, Filter, ArrowDownUp, ShieldCheck, Clock, XCircle, FileText } from "lucide-react";
 
 export default function Dashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (session?.user) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const role = (session.user as any).role;
+      if (role === "ADMIN") router.push("/admin");
+      else if (role === "JA") router.push("/ja");
+      else if (role === "AR") router.push("/ar");
+      else if (role === "CW") router.push("/cw");
+    }
+  }, [status, session, router]);
   const [filterCategory, setFilterCategory] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
