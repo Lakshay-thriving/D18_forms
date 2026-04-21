@@ -22,8 +22,12 @@ export async function GET(request: Request) {
   }
 }
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
     const body = await request.json();
     
     const arrivalDate = new Date(body.arrivalDate);
@@ -39,9 +43,14 @@ export async function POST(request: Request) {
     if (totalGuests > 2) {
        return NextResponse.json({ error: 'Maximum 2 persons allowed per room.' }, { status: 400 });
     }
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const user = session?.user as any;
+    const userId = user?.userId;
 
     const newBooking = await prisma.booking.create({
       data: {
+        userId: userId || null,
         applicantName: body.applicantName,
         designation: body.designation,
         department: body.department,
@@ -66,6 +75,29 @@ export async function POST(request: Request) {
         status: 'SUBMITTED'
       }
     });
+
+    if (user) {
+      await prisma.systemLog.create({
+        data: {
+          userEmail: user.email,
+          userId: userId || undefined,
+          action: 'BOOKING_SUBMITTED',
+          details: `Submitted booking for ${body.guestNames} (${body.roomType})`
+        }
+      });
+      
+      if (userId) {
+        await prisma.notification.create({
+          data: {
+            userId: userId,
+            title: 'Application Submitted',
+            message: `Your guest house request for ${body.guestNames} was successfully submitted and is pending review.`,
+            type: 'info'
+          }
+        });
+      }
+    }
+
     return NextResponse.json(newBooking, { status: 201 });
   } catch (error) {
     console.error('Failed to create booking', error);

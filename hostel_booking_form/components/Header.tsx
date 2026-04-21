@@ -49,12 +49,35 @@ export default function Header() {
       subtitle = "Submit a new guest accommodation request";
     } else if (['status', 'ja', 'ar', 'cw'].includes(pathParts[0])) {
       breadcrumb = "Home / Dashboard";
-      pageTitle = "Applicant Dashboard";
-      subtitle = "View and manage your hostel applications";
+      pageTitle = "Application Dashboard";
+      subtitle = "View and manage system applications";
     } else if (pathParts[0] === 'profile') {
       breadcrumb = "Home / User Profile";
       pageTitle = "User Profile";
       subtitle = "Manage your administrative details and contact settings";
+    } else if (pathParts[0] === 'admin') {
+      const page = pathParts[1];
+      if (page === 'users') {
+        breadcrumb = "Admin / Users";
+        pageTitle = "User Management";
+        subtitle = "Approve registrations and manage roles";
+      } else if (page === 'requests') {
+        breadcrumb = "Admin / Requests";
+        pageTitle = "All Requests";
+        subtitle = "System-wide view of all guest room applications";
+      } else if (page === 'logs') {
+        breadcrumb = "Admin / Logs";
+        pageTitle = "System Logs";
+        subtitle = "Audit trail of all administrative and user actions";
+      } else if (page === 'announcements') {
+        breadcrumb = "Admin / Announcements";
+        pageTitle = "Announcements";
+        subtitle = "Manage global notices displayed on the login page";
+      } else {
+        breadcrumb = "Admin / Dashboard";
+        pageTitle = "System Administration";
+        subtitle = "Overview of IIT Ropar Hostel Management Portal";
+      }
     }
   }
 

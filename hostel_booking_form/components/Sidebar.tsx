@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { LayoutDashboard, FileText, ClipboardList, Bell } from 'lucide-react';
+import { LayoutDashboard, FileText, ClipboardList, Bell, Users } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
@@ -19,25 +19,35 @@ export default function Sidebar() {
   // Determine what role the user is — only after mount to avoid hydration mismatch
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const role = mounted ? (session?.user as any)?.role : undefined;
-  const isApplicant = role === "APPLICANT" || !role;
-  const isAdmin = mounted && ["JA", "AR", "CW"].includes(role);
+  
+  const isStudent = role === "STUDENT" || role === "APPLICANT" || !role;
+  const isApprover = mounted && ["JA", "AR", "CW"].includes(role);
+  const isAdmin = role === "ADMIN";
 
   const menuItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/apply', label: 'Guest Room Booking', icon: FileText },
+    { href: isAdmin ? '/admin' : '/', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
-  if (isApplicant) {
-    menuItems.push({ href: '/status/my-requests', label: 'My Requests', icon: ClipboardList });
-  }
-
   if (isAdmin) {
-    if (role === "JA") menuItems.push({ href: '/ja', label: 'Applications', icon: ClipboardList });
-    if (role === "AR") menuItems.push({ href: '/ar', label: 'Applications', icon: ClipboardList });
-    if (role === "CW") menuItems.push({ href: '/cw', label: 'Applications', icon: ClipboardList });
+    menuItems.push({ href: '/admin/users', label: 'User Management', icon: Users });
+    menuItems.push({ href: '/admin/requests', label: 'All Requests', icon: FileText });
+    menuItems.push({ href: '/admin/announcements', label: 'Announcements', icon: Bell });
+    menuItems.push({ href: '/admin/logs', label: 'System Logs', icon: ClipboardList });
+  } else {
+    menuItems.push({ href: '/apply', label: 'Guest Room Booking', icon: FileText });
+    
+    if (isStudent) {
+      menuItems.push({ href: '/status/my-requests', label: 'My Requests', icon: ClipboardList });
+    }
+  
+    if (isApprover) {
+      if (role === "JA") menuItems.push({ href: '/ja', label: 'Applications', icon: ClipboardList });
+      if (role === "AR") menuItems.push({ href: '/ar', label: 'Applications', icon: ClipboardList });
+      if (role === "CW") menuItems.push({ href: '/cw', label: 'Applications', icon: ClipboardList });
+    }
+  
+    menuItems.push({ href: '/notifications', label: 'Notifications', icon: Bell });
   }
-
-  menuItems.push({ href: '/notifications', label: 'Notifications', icon: Bell });
 
   return (
     <aside className="w-72 min-h-screen flex-shrink-0 bg-[#0B3D91] text-white fixed left-0 top-0 z-50 flex flex-col shadow-xl">

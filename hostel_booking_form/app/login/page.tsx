@@ -47,11 +47,26 @@ const announcements = [
 ];
 
 export default function Login() {
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+  
+  // Login State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  
+  // Signup State
+  const [signupData, setSignupData] = useState({
+    name: "",
+    empCode: "",
+    email: "",
+    mobile: "",
+    password: "",
+    confirmPassword: ""
+  });
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -59,6 +74,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
 
     const res = await signIn("credentials", {
       email,
@@ -67,11 +83,52 @@ export default function Login() {
     });
 
     if (res?.error) {
-      setError("Invalid email or password. Please try again.");
+      if (res.error === "PENDING_APPROVAL") {
+        setError("Your account is pending admin approval.");
+      } else if (res.error === "ACCOUNT_REJECTED") {
+        setError("Your account request was rejected.");
+      } else if (res.error === "ACCOUNT_BLOCKED") {
+        setError("Your account has been blocked.");
+      } else {
+        setError("Invalid email or password. Please try again.");
+      }
       setLoading(false);
     } else {
       router.push("/");
       router.refresh();
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (signupData.password !== signupData.confirmPassword) {
+      return setError("Passwords do not match.");
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signupData)
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to sign up.");
+      }
+
+      setSuccess(data.message);
+      setActiveTab("login");
+      setEmail(signupData.email);
+      setSignupData({ name: "", empCode: "", email: "", mobile: "", password: "", confirmPassword: "" });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -225,7 +282,7 @@ export default function Login() {
             padding: "2rem 2.5rem",
           }}
         >
-          {/* Login Card */}
+          {/* Login / Signup Card */}
           <div
             style={{
               background: "white",
@@ -236,18 +293,78 @@ export default function Login() {
               maxWidth: 420,
             }}
           >
-            {/* Card Header */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.35rem" }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "#EFF4FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Shield size={18} color="#0B3D91" />
+            {/* Card Header & Tabs */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "#EFF4FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Shield size={18} color="#0B3D91" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#111" }}>
+                    {activeTab === "login" ? "Sign In" : "Register"}
+                  </div>
+                  <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.1rem" }}>Secured by IIT Ropar ERP</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#111" }}>Sign In to Continue</div>
-                <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.1rem" }}>Secured by IIT Ropar ERP</div>
+              <div style={{ display: "flex", background: "#F5F7FA", borderRadius: 8, padding: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("login"); setError(""); setSuccess(""); }}
+                  style={{
+                    padding: "0.4rem 0.8rem",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    background: activeTab === "login" ? "white" : "transparent",
+                    color: activeTab === "login" ? "#0B3D91" : "#6B7280",
+                    boxShadow: activeTab === "login" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("signup"); setError(""); setSuccess(""); }}
+                  style={{
+                    padding: "0.4rem 0.8rem",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    background: activeTab === "signup" ? "white" : "transparent",
+                    color: activeTab === "signup" ? "#0B3D91" : "#6B7280",
+                    boxShadow: activeTab === "signup" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  Signup
+                </button>
               </div>
             </div>
 
-            <div style={{ height: 1, background: "#F0F0F0", margin: "1.25rem 0" }} />
+            {/* Success Banner */}
+            {success && (
+              <div
+                style={{
+                  background: "#ECFDF5",
+                  border: "1px solid #A7F3D0",
+                  borderLeft: "4px solid #10B981",
+                  borderRadius: 8,
+                  padding: "0.75rem 1rem",
+                  marginBottom: "1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <CheckCircle size={16} color="#059669" />
+                <span style={{ fontSize: "0.8rem", color: "#065F46", fontWeight: 600 }}>{success}</span>
+              </div>
+            )}
 
             {/* Error Banner */}
             {error && (
@@ -268,7 +385,7 @@ export default function Login() {
               </div>
             )}
 
-            {/* Form */}
+            {activeTab === "login" ? (
             <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
               {/* Email */}
               <div>
@@ -426,6 +543,237 @@ export default function Login() {
                 )}
               </button>
             </form>
+            ) : (
+            <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+              {/* Full Name */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#374151", marginBottom: "0.4rem", letterSpacing: "0.02em" }}>
+                  Full Name
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    required
+                    type="text"
+                    placeholder="John Doe"
+                    value={signupData.name}
+                    onChange={(e) => setSignupData({...signupData, name: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      border: "1.5px solid #E5E7EB",
+                      borderRadius: 10,
+                      fontSize: "0.85rem",
+                      color: "#111",
+                      outline: "none",
+                      transition: "border-color 0.2s, box-shadow 0.2s",
+                      boxSizing: "border-box",
+                      background: "#FAFAFA",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#0B3D91";
+                      e.currentTarget.style.background = "white";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#E5E7EB";
+                      e.currentTarget.style.background = "#FAFAFA";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Email & Mobile */}
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#374151", marginBottom: "0.4rem", letterSpacing: "0.02em" }}>
+                    Institute Email
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    placeholder="@iitrpr.ac.in"
+                    value={signupData.email}
+                    onChange={(e) => setSignupData({...signupData, email: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      border: "1.5px solid #E5E7EB",
+                      borderRadius: 10,
+                      fontSize: "0.85rem",
+                      color: "#111",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                      background: "#FAFAFA",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0B3D91"; e.currentTarget.style.background = "white"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#FAFAFA"; }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#374151", marginBottom: "0.4rem", letterSpacing: "0.02em" }}>
+                    Entry No / Emp Code
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="2024XX01"
+                    value={signupData.empCode}
+                    onChange={(e) => setSignupData({...signupData, empCode: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      border: "1.5px solid #E5E7EB",
+                      borderRadius: 10,
+                      fontSize: "0.85rem",
+                      color: "#111",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                      background: "#FAFAFA",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0B3D91"; e.currentTarget.style.background = "white"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#FAFAFA"; }}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#374151", marginBottom: "0.4rem", letterSpacing: "0.02em" }}>
+                    Mobile Number
+                  </label>
+                  <input
+                    required
+                    type="tel"
+                    placeholder="10-digit number"
+                    value={signupData.mobile}
+                    onChange={(e) => setSignupData({...signupData, mobile: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      border: "1.5px solid #E5E7EB",
+                      borderRadius: 10,
+                      fontSize: "0.85rem",
+                      color: "#111",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                      background: "#FAFAFA",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0B3D91"; e.currentTarget.style.background = "white"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#FAFAFA"; }}
+                  />
+                </div>
+
+              {/* Passwords */}
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#374151", marginBottom: "0.4rem", letterSpacing: "0.02em" }}>
+                    Password
+                  </label>
+                  <input
+                    required
+                    type="password"
+                    placeholder="••••••••"
+                    value={signupData.password}
+                    onChange={(e) => setSignupData({...signupData, password: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      border: "1.5px solid #E5E7EB",
+                      borderRadius: 10,
+                      fontSize: "0.85rem",
+                      color: "#111",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                      background: "#FAFAFA",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0B3D91"; e.currentTarget.style.background = "white"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#FAFAFA"; }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#374151", marginBottom: "0.4rem", letterSpacing: "0.02em" }}>
+                    Confirm
+                  </label>
+                  <input
+                    required
+                    type="password"
+                    placeholder="••••••••"
+                    value={signupData.confirmPassword}
+                    onChange={(e) => setSignupData({...signupData, confirmPassword: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      border: "1.5px solid #E5E7EB",
+                      borderRadius: 10,
+                      fontSize: "0.85rem",
+                      color: "#111",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                      background: "#FAFAFA",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0B3D91"; e.currentTarget.style.background = "white"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "#FAFAFA"; }}
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  background: loading ? "#6B8FC7" : "linear-gradient(135deg, #0B3D91, #1458C8)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  transition: "all 0.2s",
+                  boxShadow: "0 4px 14px rgba(11,61,145,0.35)",
+                  marginTop: "0.25rem",
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "linear-gradient(135deg, #082A63, #0B3D91)";
+                    e.currentTarget.style.boxShadow = "0 6px 20px rgba(11,61,145,0.45)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "linear-gradient(135deg, #0B3D91, #1458C8)";
+                    e.currentTarget.style.boxShadow = "0 4px 14px rgba(11,61,145,0.35)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }
+                }}
+              >
+                {loading ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
+                      <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+                      <path d="M12 2a10 10 0 0 1 10 10" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                    Registering...
+                  </>
+                ) : (
+                  <>
+                    Sign Up
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+            </form>
+            )}
 
             {/* Footer */}
             <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #F3F4F6", textAlign: "center" }}>

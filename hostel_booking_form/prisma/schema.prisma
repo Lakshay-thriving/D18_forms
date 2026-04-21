@@ -8,6 +8,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── User & Auth Enums ───────────────────────────────────────────
+
+enum UserRole {
+  STUDENT
+  JA
+  AR
+  CW
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BLOCKED
+}
+
+// ─── Booking Enums ───────────────────────────────────────────────
+
 enum Status {
   SUBMITTED
   JA_REJECTED
@@ -28,11 +47,36 @@ enum PaidBy {
   APPLICANT
 }
 
+// ─── User Model ──────────────────────────────────────────────────
+
+model User {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  password  String
+  empCode   String?
+  mobile    String?
+  role      UserRole   @default(STUDENT)
+  status    UserStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  bookings      Booking[]
+  notifications Notification[]
+  systemLogs    SystemLog[]
+}
+
+// ─── Booking Model ───────────────────────────────────────────────
+
 model Booking {
   id               String   @id @default(uuid())
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
+  // Link to authenticated user (optional for backward compat)
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id])
+
   // Section 1: Applicant Details
   applicantName    String
   designation      String
@@ -87,4 +131,42 @@ model Booking {
   cwRemarks        String?
   cwSignature      String?
   cwApprovedAt     DateTime?
+}
+
+// ─── System Log ──────────────────────────────────────────────────
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  userEmail String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+// ─── Announcement ────────────────────────────────────────────────
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdBy String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Notification ────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
 }
