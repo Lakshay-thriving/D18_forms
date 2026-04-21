@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { User, LogOut, Bell, CheckCircle, Info, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -16,6 +19,8 @@ const getAvatarColor = (name: string) => {
 export default function Header() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
