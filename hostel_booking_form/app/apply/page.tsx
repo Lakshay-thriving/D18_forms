@@ -103,7 +103,10 @@ export default function NewBookingForm() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to submit booking");
+      if (!res.ok) {
+        const errorMsg = data.details ? `${data.error}: ${data.details}` : (data.error || "Failed to submit booking");
+        throw new Error(errorMsg);
+      }
 
       router.push(`/status/${data.id}`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -45,12 +45,19 @@ export async function POST(request: Request) {
     }
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const user = session?.user as any;
-    const userId = user?.userId;
+    const userRole = session?.user ? (session.user as any).role : null;
+    const userId = session?.user ? (session.user as any).userId : null;
+
+    // Verify if userId actually exists in the User table before linking (Prevents FK errors)
+    let validUserId = null;
+    if (userId) {
+      const exists = await prisma.user.findUnique({ where: { id: userId } });
+      if (exists) validUserId = userId;
+    }
 
     const newBooking = await prisma.booking.create({
       data: {
-        userId: userId || null,
+        userId: validUserId,
         applicantName: body.applicantName,
         designation: body.designation,
         department: body.department,
@@ -76,20 +83,20 @@ export async function POST(request: Request) {
       }
     });
 
-    if (user) {
+    if (session?.user) {
       await prisma.systemLog.create({
         data: {
-          userEmail: user.email,
-          userId: userId || undefined,
+          userEmail: session.user.email || 'unknown',
+          userId: validUserId || undefined,
           action: 'BOOKING_SUBMITTED',
           details: `Submitted booking for ${body.guestNames} (${body.roomType})`
         }
       });
       
-      if (userId) {
+      if (validUserId) {
         await prisma.notification.create({
           data: {
-            userId: userId,
+            userId: validUserId,
             title: 'Application Submitted',
             message: `Your guest house request for ${body.guestNames} was successfully submitted and is pending review.`,
             type: 'info'
@@ -99,8 +106,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(newBooking, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create booking', error);
-    return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Failed to create booking:', error);
+    return NextResponse.json({ 
+      error: 'Failed to create booking', 
+      details: error.message || 'Unknown server error' 
+    }, { status: 500 });
   }
 }
