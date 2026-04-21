@@ -4,48 +4,25 @@ import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const path = req.nextUrl.pathname;
+  const { pathname } = req.nextUrl;
 
-  // 1. If no token and trying to access protected routes, redirect to login
+  // 1. Allow public access to login and API routes
+  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth')) {
+    if (token && pathname === '/login') {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 2. Strict Auth Check
   if (!token) {
-    if (path.startsWith('/login')) {
-      return NextResponse.next();
-    }
-    // Don't redirect if it's an API route (let the API handle auth)
-    if (path.startsWith('/api')) {
-      return NextResponse.next();
-    }
-    return NextResponse.redirect(new URL("/login", req.url));
+    const url = req.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  const role = token.role as string;
-
-  // 2. Protect Admin dashboard
-  if (path.startsWith("/admin") && role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
-  // 3. Protect specific role dashboards
-  if (path.startsWith("/ja") && role !== "JA") {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-  if (path.startsWith("/ar") && role !== "AR") {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-  if (path.startsWith("/cw") && role !== "CW") {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-  
-  // 4. Role-based redirect for home page
-  if (path === "/") {
-    if (role === "ADMIN") return NextResponse.redirect(new URL("/admin", req.url));
-    if (role === "JA") return NextResponse.redirect(new URL("/ja", req.url));
-    if (role === "AR") return NextResponse.redirect(new URL("/ar", req.url));
-    if (role === "CW") return NextResponse.redirect(new URL("/cw", req.url));
-  }
-
-  // 5. If already logged in, don't show login page
-  if (path === "/login") {
+  // 3. Basic Role Protection (Admin only)
+  if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
@@ -53,5 +30,14 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/ja/:path*", "/ar/:path*", "/cw/:path*", "/status/:path*", "/login", "/apply"]
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes except auth)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api(?!/auth)|_next/static|_next/image|favicon.ico).*)',
+  ],
 };
