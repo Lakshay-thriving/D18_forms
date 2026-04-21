@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
-import { User, LogOut, Bell } from "lucide-react";
+import { User, LogOut, Bell, CheckCircle, Info, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 
 const getAvatarColor = (name: string) => {
   const colors = ["bg-[#0B3D91]", "bg-[#2E7D32]", "bg-[#C62828]", "bg-[#F4A300]", "bg-slate-800"];
@@ -17,10 +16,21 @@ const getAvatarColor = (name: string) => {
 export default function Header() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  const { data: notifData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications");
+      return res.json();
+    },
+    enabled: !!session,
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
+  const notifications = notifData?.notifications || [];
+  const unreadCount = notifications.filter((n: any) => !n.read).length;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -112,29 +122,65 @@ export default function Header() {
                 className="relative text-gray-400 hover:text-[#0B3D91] transition-colors p-1"
               >
                 <Bell className="w-6 h-6" />
-                <span className="absolute top-1 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
               </button>
               
               {notifOpen && (
                 <div className="absolute right-0 mt-3 w-80 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden py-1 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                  <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h4 className="font-bold text-sm text-[#222]">Notifications</h4>
-                    <span className="bg-red-100 text-[#C62828] text-[0.65rem] font-bold px-2 py-0.5 rounded-full">3 New</span>
+                    {unreadCount > 0 && (
+                      <span className="bg-red-100 text-[#C62828] text-[0.65rem] font-bold px-2 py-0.5 rounded-full">
+                        {unreadCount} New
+                      </span>
+                    )}
                   </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <Link href="/status/my-requests" onClick={() => setNotifOpen(false)} className="block px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
-                      <p className="text-xs font-semibold text-gray-800">Your request GR-2026-XQ5A was approved</p>
-                      <p className="text-[0.65rem] text-gray-500 mt-1">2 hours ago</p>
-                    </Link>
-                    <Link href="/status/my-requests" onClick={() => setNotifOpen(false)} className="block px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition bg-red-50/30">
-                      <p className="text-xs font-semibold text-gray-800">Rejected by Chief Warden</p>
-                      <p className="text-[0.65rem] text-gray-500 mt-1">1 day ago</p>
-                    </Link>
-                    <Link href="/status/my-requests" onClick={() => setNotifOpen(false)} className="block px-4 py-3 hover:bg-gray-50 transition">
-                      <p className="text-xs font-semibold text-gray-800">Action required: Please update GR-2026-B91F</p>
-                      <p className="text-[0.65rem] text-gray-500 mt-1">3 days ago</p>
-                    </Link>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <p className="text-sm text-gray-400">No notifications yet</p>
+                      </div>
+                    ) : (
+                      notifications.map((n: any) => (
+                        <Link 
+                          key={n.id}
+                          href={n.link || "/notifications"} 
+                          onClick={() => setNotifOpen(false)} 
+                          className={cn(
+                            "block px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition",
+                            !n.read && "bg-blue-50/30"
+                          )}
+                        >
+                          <div className="flex gap-3">
+                            <div className={cn(
+                              "mt-0.5",
+                              n.type === 'success' ? 'text-green-500' : n.type === 'error' ? 'text-red-500' : 'text-[#0B3D91]'
+                            )}>
+                              {n.type === 'success' ? <CheckCircle size={14} /> : n.type === 'error' ? <AlertTriangle size={14} /> : <Info size={14} />}
+                            </div>
+                            <div className="flex-1">
+                              <p className={cn("text-xs leading-snug", !n.read ? "font-bold text-gray-900" : "font-medium text-gray-700")}>
+                                {n.title}
+                              </p>
+                              <p className="text-[0.7rem] text-gray-500 mt-1 line-clamp-2">{n.message}</p>
+                              <p className="text-[0.6rem] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">
+                                {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
                   </div>
+                  <Link 
+                    href="/notifications" 
+                    onClick={() => setNotifOpen(false)}
+                    className="block w-full py-2.5 text-center text-[0.7rem] font-bold text-[#0B3D91] border-t border-gray-50 hover:bg-gray-50 transition-colors"
+                  >
+                    VIEW ALL NOTIFICATIONS
+                  </Link>
                 </div>
               )}
             </div>
