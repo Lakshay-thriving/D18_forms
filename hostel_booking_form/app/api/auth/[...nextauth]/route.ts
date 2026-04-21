@@ -12,10 +12,15 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          console.log("Auth Failure: Missing credentials");
+          return null;
+        }
         
         const email = credentials.email;
         const password = credentials.password;
+
+        console.log(`Auth Attempt: ${email}`);
 
         // Legacy hardcoded fallback for specific users
         if (password === "12345678") {
@@ -35,39 +40,50 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (matched) {
+            console.log(`Auth Success (Legacy): ${email}`);
             return { id: email, name, email, role };
           }
         }
 
         // Database-backed authentication
-        const dbUser = await prisma.user.findUnique({
-          where: { email },
-        });
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email },
+          });
 
-        if (!dbUser) {
-          throw new Error("No user found with this email");
+          if (!dbUser) {
+            console.log(`Auth Failure: No user found for ${email}`);
+            throw new Error("No user found with this email");
+          }
+
+          if (dbUser.status === 'PENDING') {
+            console.log(`Auth Failure: ${email} is PENDING`);
+            throw new Error("Account pending approval. Please contact administration.");
+          }
+          
+          if (dbUser.status === 'REJECTED' || dbUser.status === 'BLOCKED') {
+            console.log(`Auth Failure: ${email} is ${dbUser.status}`);
+            throw new Error("Your account has been deactivated.");
+          }
+
+          const isPasswordValid = await bcrypt.compare(password, dbUser.password);
+
+          if (!isPasswordValid) {
+            console.log(`Auth Failure: Invalid password for ${email}`);
+            throw new Error("Invalid password");
+          }
+
+          console.log(`Auth Success (DB): ${email}`);
+          return { 
+            id: dbUser.id, 
+            name: dbUser.name, 
+            email: dbUser.email, 
+            role: dbUser.role 
+          };
+        } catch (err: any) {
+          console.error("Auth Exception:", err.message);
+          throw err;
         }
-
-        if (dbUser.status === 'PENDING') {
-          throw new Error("Account pending approval. Please contact administration.");
-        }
-        
-        if (dbUser.status === 'REJECTED' || dbUser.status === 'BLOCKED') {
-          throw new Error("Your account has been deactivated.");
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, dbUser.password);
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid password");
-        }
-
-        return { 
-          id: dbUser.id, 
-          name: dbUser.name, 
-          email: dbUser.email, 
-          role: dbUser.role 
-        };
       }
     })
   ],
